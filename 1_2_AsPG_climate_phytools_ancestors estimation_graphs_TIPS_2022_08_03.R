@@ -66,7 +66,11 @@ summary_aral <- aral %>%
 # to establish the number of colors in each ramp
 dlimits <- abs(round(100*(c(-6, limits)-c(limits,4))))
 
-# to generate colors use this link https://colordesigner.io/gradient-generator
+# to generate colors we used this webpage https://colordesigner.io/gradient-generator
+# we selected the maximum and minimum values so that they matched the colors in the
+# maps of the paper and then some intermediate colors to build a ramp per
+# category
+
 # create one ramp per category
 coltemp <- colorRampPalette(c("#5d478b", "#5864ae", "#4b82cd", "#33a1e8",
                               "#00bffe", "#00bffe", "#00caff", "#00d4ff",
@@ -109,12 +113,11 @@ barplot
 ##### Phylotenetic tree
 
 tree <- ggtree(tree_ultra, branch.length="none") +
-  # geom_tiplab() +
-  # geom_text2(aes(label=node), hjust=-.3) +
+  geom_tiplab() +
   geom_text2(aes(subset=!isTip, label=node),hjust=-.3) +
   geom_nodepoint(alpha = 0.5) + 
-  # xlim(0,9)
-  theme(plot.margin = unit(c(0, 0, 0, 0), "cm"))
+  xlim(0,8.8) 
+  # theme(plot.margin = unit(c(0, 0, 0, 0), "cm"))
 tree
 
 
@@ -146,16 +149,19 @@ density_plot <- ggplot() +
   xlab("First axis of the PCA") +
   facet_grid(Genus ~ ., switch = "both") +
   theme_bw() +
+  # theme(legend.position = "none",
+  #       strip.background = element_rect(fill = NA),
+  #       strip.text.y.left = element_text(angle=360)) +
+  # theme(strip.text = element_text(face = "italic")) +
   theme(legend.position = "none",
-        strip.background = element_rect(fill = NA),
-        strip.text.y.left = element_text(angle=360)) +
-  theme(strip.text = element_text(face = "italic")) +
-  theme(plot.margin = unit(c(0, 0, 0, 0), "cm"))
+    strip.background = element_blank(),
+    strip.text.y = element_blank()
+  ) 
+  # theme(plot.margin = unit(c(0, 0, 0, 0), "cm"))
 
 density_plot
 
 # ggsave(paste0(path.to.results, "Climate_TIPS_newramp.svg"), width = 8, height = 10) 
-
 
 
 # combine the plots 
