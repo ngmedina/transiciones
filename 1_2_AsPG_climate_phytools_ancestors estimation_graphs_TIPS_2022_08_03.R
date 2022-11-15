@@ -112,12 +112,16 @@ barplot
 
 ##### Phylotenetic tree
 
-tree <- ggtree(tree_ultra, branch.length="none") +
-  geom_tiplab() +
-  geom_text2(aes(subset=!isTip, label=node),hjust=-.3) +
-  geom_nodepoint(alpha = 0.5) + 
-  xlim(0,8.8) 
-  # theme(plot.margin = unit(c(0, 0, 0, 0), "cm"))
+# create labels
+d <- data.frame(label = tree_ultra$tip.label, 
+                newlabel = label_pad(tree_ultra$tip.label),
+                newlabel2 = label_pad(tree_ultra$tip.label, pad = " "))
+
+# plot with new labels
+tree <- ggtree(tree_ultra) %<+% d +  xlim(NA,1.2) +
+  geom_tiplab(aes(label=newlabel), 
+                      align=TRUE,  linetype = "dotted", linesize = .7)   
+
 tree
 
 
