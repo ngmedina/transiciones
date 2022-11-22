@@ -1,3 +1,3 @@
 # transiciones
 
-This is a line from Rstudiio
+This is a line from Rstudio

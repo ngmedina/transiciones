@@ -33,15 +33,57 @@ path.to.results <- "C:/Users/NG.5027073/Dropbox (SCENIC MNCN CSIC)/2020_1_In pre
 
 aral <- read.csv("Data/Araliaceae_clima_PCA_2021_01_10.csv")
 
+# AsPG tip probabilistic climate values
+aral <- read.csv("Data/Araliaceae_clima_PCA_2021_01_10.csv")
+aral$Genus<-as.character(aral$Genus)
+aral <- aral[!(aral$Genus =="Didymopanax"), ]
+aral <- aral[!(aral$Genus =="Cephalopanax"), ]
+aral <- aral[!(aral$Genus =="Frodinia"), ]
+aral <- aral[!(aral$Genus =="Crepinella"), ]
+aral$Genus<-as.factor(aral$Genus)
+
+
+########################################################'
+## Run twice one with nucleo and the other with plasto #####
+########################################################'
+
+#############"
+# run nucleo 
+#############"
+
+run <- "nucleo"
+
+# load tree
+nucleo_ultra <- ape::read.tree('Data/nucleo_ultra.newick')
+ultra <- nucleo_ultra
+
+# match Genus in tree and tip climate data
+aral$Genus <- factor(aral$Genus, levels = tree_ultra$tip.label)
+aral <- aral[!is.na(aral$Genus),]
+
+# load internal nodes probabilistic climate data
+anc_clim <- read.csv(paste0(path.to.results, "ancestors_climate_nucleo", date, ".csv"))
+anc_clim_prob <- read.csv(paste0(path.to.results, "ancestors_climate_prob_nucleo", date, ".csv"))
+
+#############"
 # run plasto 
-tree_ultra <- ape::read.tree('Data/plasto_ultra.newick')
+#############"
+
+run <- "plasto"
+anc_clim <- read.csv(paste0(path.to.results, "ancestors_climate_plasto", date, ".csv"))
+anc_clim_prob <- read.csv(paste0(path.to.results, "ancestors_climate_prob_plasto", date, ".csv"))
+
+plasto_ultra <- ape::read.tree('Data/plasto_ultra.newick')
 aral$Genus <- factor(aral$Genus, levels = rev(tree_ultra$tip.label))
 aral <- aral[!is.na(aral$Genus),]
 
-# run nucleo
-tree_ultra <- ape::read.tree('Data/nucleo_ultra.newick')
-aral$Genus <- factor(aral$Genus, levels = tree_ultra$tip.label)
-aral <- aral[!is.na(aral$Genus),]
+
+# save date for version control
+date <- "2022_07_11"
+
+########################################'
+#               ANALYSIS           #####
+########################################'
 
 # extract limits for each transitional region
 qlat <- aral %>%
@@ -119,13 +161,12 @@ d <- data.frame(label = tree_ultra$tip.label,
 
 # plot with new labels
 tree <- ggtree(tree_ultra) %<+% d +  xlim(NA,1.2) +
-  geom_tiplab(aes(label=newlabel), 
-                      align=TRUE,  linetype = "dotted", linesize = .7)   
+  geom_tiplab(aes(label=newlabel))   
 
 tree
 
 
-# reordr the labels of the database to match tip labels
+# reorder the labels of the database to match tip labels
 aral$Genus <- factor(aral$Genus, levels = get_taxa_name(tree))
 
 ##### Density plot
@@ -135,7 +176,7 @@ color01 <- 1000* round(rescale(c(-6,unique(summary_aral$meanPC1),4)), digits = 2
 # select color proportional to value using the standardized values
 color_tip <- color[color01[c(-1,-25)]]
 
-density_plot <- ggplot() +
+density_plot_tips <- ggplot() +
   # horizontal boxplots & density plots
   geom_density(data = aral, aes(x= PC1, fill = Genus)) +
   scale_fill_manual(values =  color_tip) +   
@@ -163,7 +204,7 @@ density_plot <- ggplot() +
   ) 
   # theme(plot.margin = unit(c(0, 0, 0, 0), "cm"))
 
-density_plot
+density_plot_tips
 
 # ggsave(paste0(path.to.results, "Climate_TIPS_newramp.svg"), width = 8, height = 10) 
 
@@ -181,7 +222,7 @@ pp <- list(barplot, density_plot)
 
 plot_grid(plotlist=pp, ncol=1, align='v', axis = "l",rel_heights = c(1, 18))
 
-ggsave(paste0(path.to.results, "Climate_TIPS_withbar.svg"), width = 8, height = 12) 
+# ggsave(paste0(path.to.results, "Climate_TIPS_withbar.svg"), width = 8, height = 12) 
 
 # graphs one by one
 n <- length(unique(aral$Genus))

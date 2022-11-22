@@ -39,7 +39,7 @@ path.to.results <- "C:/Users/NG.5027073/Dropbox (SCENIC MNCN CSIC)/2020_1_In pre
 ########################################@
 #                 DATA              #####
 ########################################@
-# AsPG random climate values
+# AsPG probabilistic climate values
 aral <- read.csv("Data/Araliaceae_clima_PCA_2021_01_10.csv")
 aral$Genus<-as.character(aral$Genus)
 aral <- aral[!(aral$Genus =="Didymopanax"), ]
