@@ -31,7 +31,7 @@ main.path <- "C:/Users/NG.5027073/Dropbox (SCENIC MNCN CSIC)/2020_1_In prep_Coca
 setwd(main.path)
 
 path.to.data <- "C:/Users/NG.5027073/Dropbox (SCENIC MNCN CSIC)/2020_1_In prep_Coca_Tropical vs. temperate Araliacae_Statistics/Data/"
-path.to.results <- "C:/Users/NG.5027073/Dropbox (SCENIC MNCN CSIC)/2020_1_In prep_Coca_Tropical vs. temperate Araliacae_Statistics/results/"
+path.to.results <- "C:/Users/NG.5027073/Dropbox (SCENIC MNCN CSIC)/2020_1_In prep_Coca_Tropical vs. temperate Araliacae_Statistics/Results/"
 
 # save date for version control
 date <- "2022_07_11"
@@ -78,18 +78,6 @@ summary_aral <- aral %>%
 # change name of node in anc_clim to match name in anc_clim_prob
 anc_clim$node <- paste0("X", anc_clim$node)
 anc_clim_prob <- tidyr::gather(anc_clim_prob, node, value, factor_key=TRUE)
-
-# t-tests
-# n <- unique(anc_clim_prob$node)[[1]]
-t_test <- lapply(unique(anc_clim_prob$node), function(n){
-  y <- filter(anc_clim_prob, node == n)
-  aboveST <- t.test(y$value, mu = limits_trans_lat[3], alternative = "greater") # H0: mu > -0.32
-  belowT <- t.test(y$value, mu = limits_trans_lat[4], alternative = 'less') # Ho: mu > 1.24
-  pval <- c(aboveST$p.value,belowT$p.value)
-})
-
-names(t_test) <- unique(anc_clim_prob$node)
-t_test
 
 # colors for the nodes by mean PC value
 # PC mean value by node
@@ -142,7 +130,7 @@ color_anc <- color[color01]
 
 ggplot() +
   # horizontal boxplots & density plots
-  geom_density(data = anc_clim_prob, aes(x= value, fill = node)) 
+  geom_density(data = anc_clim_prob, aes(x= value, fill = node)) +
   scale_fill_manual(values = color_anc) +
   # results of the other reconstruction methods
   # geom_linerangeh(data = anc_clim,   aes(y = -0.3, xmin = minPC1,
@@ -166,50 +154,50 @@ ggplot() +
 # ggsave(paste0(path.to.results, "Climate_Anc_M_", run, "_probabilistic_with_ranges_newramp", date,".svg"), width = 8, height = 10) 
 
 
-# each genera in one plot
-# i <- (1:length(unique(anc_clim_prob$node)))[[1]]
-n <- length(unique(anc_clim_prob$node))
-
-lapply(1:n, function(i){
-  col <- color_anc[[i]]
-  node <- unique(anc_clim_prob$node)[[i]]
-  anc_clim_sel <- anc_clim[anc_clim$node == node,]
-  anc_clim_prob_sel <- anc_clim_prob[anc_clim_prob$node == node,]
-  
-  ggplot() +
-    # horizontal boxplots & density plots
-    geom_density(data = anc_clim_prob_sel, aes(x= value),fill = col) +
-    # geom_linerangeh(data = anc_clim,   aes(y = -0.3, xmin = minPC1,
-    #                xmax = maxPC1), colour = "lightgrey", size = 2) +
-    geom_linerangeh(data = anc_clim_sel,   aes(y = 0, xmin = medianPC1-0.1,
-                                               xmax = medianPC1+0.1), colour = "red", size = 6) +
-    geom_linerangeh(data = anc_clim_sel,   aes(y = 0, xmin = meanPC1-0.1,
-                                               xmax = meanPC1+0.1), colour = "orange", size = 6) +
-    # geom_vline(xintercept = limits_trans_lat) +
-    scale_y_continuous(breaks = c(0,0.5, 1)) +
-    ylim(c(0,1.6)) +
-    xlim(c(-6,4)) +
-    ylab("") +
-    xlab("") +
-    theme_bw() +
-    theme(
-      panel.background = element_rect(fill='transparent'), #transparent panel bg
-      plot.background = element_rect(fill='transparent', color=NA), #transparent plot bg
-      panel.grid.major = element_blank(), #remove major gridlines
-      panel.grid.minor = element_blank(), #remove minor gridlines
-      legend.background = element_rect(fill='transparent'), #transparent legend bg
-      legend.box.background = element_rect(fill='transparent'), #transparent legend panel
-      panel.border = element_blank(), # remove panel border
-      axis.line.x = element_line(size = 1, linetype = "solid", colour = "black"),
-      axis.line.y = element_line(size = 1, linetype = "solid", colour = "white"),
-      axis.ticks.x = element_blank(),
-      axis.ticks.y = element_blank(),
-      axis.text.y = element_blank()
-    )
-  ggsave(paste0("Results/pdf_nodes_",run , node, ".png"), width = 12, height = 4)    
-})
-
-
-# probar esto
-# https://www.datanovia.com/en/blog/elegant-visualization-of-density-distribution-in-r-using-ridgeline/
-
+# # each genera in one plot
+# # i <- (1:length(unique(anc_clim_prob$node)))[[1]]
+# n <- length(unique(anc_clim_prob$node))
+# 
+# lapply(1:n, function(i){
+#   col <- color_anc[[i]]
+#   node <- unique(anc_clim_prob$node)[[i]]
+#   anc_clim_sel <- anc_clim[anc_clim$node == node,]
+#   anc_clim_prob_sel <- anc_clim_prob[anc_clim_prob$node == node,]
+#   
+#   ggplot() +
+#     # horizontal boxplots & density plots
+#     geom_density(data = anc_clim_prob_sel, aes(x= value),fill = col) +
+#     # geom_linerangeh(data = anc_clim,   aes(y = -0.3, xmin = minPC1,
+#     #                xmax = maxPC1), colour = "lightgrey", size = 2) +
+#     geom_linerangeh(data = anc_clim_sel,   aes(y = 0, xmin = medianPC1-0.1,
+#                                                xmax = medianPC1+0.1), colour = "red", size = 6) +
+#     geom_linerangeh(data = anc_clim_sel,   aes(y = 0, xmin = meanPC1-0.1,
+#                                                xmax = meanPC1+0.1), colour = "orange", size = 6) +
+#     # geom_vline(xintercept = limits_trans_lat) +
+#     scale_y_continuous(breaks = c(0,0.5, 1)) +
+#     ylim(c(0,1.6)) +
+#     xlim(c(-6,4)) +
+#     ylab("") +
+#     xlab("") +
+#     theme_bw() +
+#     theme(
+#       panel.background = element_rect(fill='transparent'), #transparent panel bg
+#       plot.background = element_rect(fill='transparent', color=NA), #transparent plot bg
+#       panel.grid.major = element_blank(), #remove major gridlines
+#       panel.grid.minor = element_blank(), #remove minor gridlines
+#       legend.background = element_rect(fill='transparent'), #transparent legend bg
+#       legend.box.background = element_rect(fill='transparent'), #transparent legend panel
+#       panel.border = element_blank(), # remove panel border
+#       axis.line.x = element_line(size = 1, linetype = "solid", colour = "black"),
+#       axis.line.y = element_line(size = 1, linetype = "solid", colour = "white"),
+#       axis.ticks.x = element_blank(),
+#       axis.ticks.y = element_blank(),
+#       axis.text.y = element_blank()
+#     )
+#   ggsave(paste0("Results/pdf_nodes_",run , node, ".png"), width = 12, height = 4)    
+# })
+# 
+# 
+# # probar esto
+# # https://www.datanovia.com/en/blog/elegant-visualization-of-density-distribution-in-r-using-ridgeline/
+# 

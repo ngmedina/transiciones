@@ -42,6 +42,9 @@ aral <- aral[!(aral$Genus =="Frodinia"), ]
 aral <- aral[!(aral$Genus =="Crepinella"), ]
 aral$Genus<-as.factor(aral$Genus)
 
+# save date for version control
+date <- "2022_07_11"
+
 
 ########################################################'
 ## Run twice one with nucleo and the other with plasto #####
@@ -55,7 +58,7 @@ run <- "nucleo"
 
 # load tree
 nucleo_ultra <- ape::read.tree('Data/nucleo_ultra.newick')
-ultra <- nucleo_ultra
+tree_ultra <- nucleo_ultra
 
 # match Genus in tree and tip climate data
 aral$Genus <- factor(aral$Genus, levels = tree_ultra$tip.label)
@@ -65,25 +68,64 @@ aral <- aral[!is.na(aral$Genus),]
 anc_clim <- read.csv(paste0(path.to.results, "ancestors_climate_nucleo", date, ".csv"))
 anc_clim_prob <- read.csv(paste0(path.to.results, "ancestors_climate_prob_nucleo", date, ".csv"))
 
+# change name of node in anc_clim to match name in anc_clim_prob
+colnames(anc_clim_prob) <- as.character(anc_clim$node)
+# from short to long format
+anc_clim_prob <- tidyr::gather(anc_clim_prob, node, value, factor_key=TRUE)
+
 #############"
 # run plasto 
 #############"
 
 run <- "plasto"
-anc_clim <- read.csv(paste0(path.to.results, "ancestors_climate_plasto", date, ".csv"))
-anc_clim_prob <- read.csv(paste0(path.to.results, "ancestors_climate_prob_plasto", date, ".csv"))
 
+# load tree
 plasto_ultra <- ape::read.tree('Data/plasto_ultra.newick')
-aral$Genus <- factor(aral$Genus, levels = rev(tree_ultra$tip.label))
+tree_ultra <- plasto_ultra
+
+# match Genus in tree and tip climate data
+aral$Genus <- factor(aral$Genus, levels = tree_ultra$tip.label)
 aral <- aral[!is.na(aral$Genus),]
 
+# load internal nodes probabilistic climate data
+anc_clim <- read.csv(paste0(path.to.results, "ancestors_climate_nucleo", date, ".csv"))
+anc_clim_prob <- read.csv(paste0(path.to.results, "ancestors_climate_prob_nucleo", date, ".csv"))
 
-# save date for version control
-date <- "2022_07_11"
+# change name of node in anc_clim to match name in anc_clim_prob
+colnames(anc_clim_prob) <- as.character(anc_clim$node)
+# from short to long format
+anc_clim_prob <- tidyr::gather(anc_clim_prob, node, value, factor_key=TRUE)
+
+
 
 ########################################'
-#               ANALYSIS           #####
+#               CREATE PLOTS         #####
 ########################################'
+
+
+##### Phylotenetic tree
+
+# generate labels for tips
+d <- data.frame(label = tree_ultra$tip.label)
+
+tree <- ggtree(tree_ultra) %<+% d +  xlim(NA,1.2) +
+  geom_text2(aes(subset=!isTip, label=node), hjust=-.3) + geom_tiplab(aes(label = label))
+
+
+tree
+
+# reorder the labels of the database to match tip labels
+aral$Genus <- factor(aral$Genus, levels = get_taxa_name(tree))
+
+# summarize climatic data
+summary_aral <- aral %>%
+  group_by(Genus)%>%
+  summarize(meanPC1=mean(PC1, na.rm = TRUE),meanPC2=mean(PC2, na.rm = TRUE),
+            medianPC1=median(PC1, na.rm = TRUE), medianPC2= median(PC2, na.rm = TRUE),
+            maxPC1=max(PC1), minPC1 = min(PC1),
+            maxPC2=max(PC2), minPC2= min(PC2)) 
+
+#### Generate color gradient 
 
 # extract limits for each transitional region
 qlat <- aral %>%
@@ -96,13 +138,6 @@ limits <- c(t_sub_temp_low = qlat$Q10[1], # temp
                       t_sub_trop_up = qlat$Q90[1] # subt-temp
             )
 
-# summarize data
-summary_aral <- aral %>%
-  group_by(Genus)%>%
-  summarize(meanPC1=mean(PC1, na.rm = TRUE),meanPC2=mean(PC2, na.rm = TRUE),
-            medianPC1=median(PC1, na.rm = TRUE), medianPC2= median(PC2, na.rm = TRUE),
-            maxPC1=max(PC1), minPC1 = min(PC1),
-            maxPC2=max(PC2), minPC2= min(PC2)) 
 
 # color palette
 # to establish the number of colors in each ramp
@@ -137,49 +172,37 @@ df <- data.frame(y= rep(0, length = length(color)), x = seq(from =-6, to= 4, len
 
 # reference bar
 barplot <- ggplot(df,aes(x= x, y = y)) +
-  geom_point(color = color, size=2, shape=0) +
+  geom_point(color = color, size=8, shape=0) +
   geom_vline(xintercept = limits, 
              linetype = "dashed") +
+  xlim(c(-6, 4)) +
   theme(panel.grid.major = element_blank(),
       panel.grid.minor = element_blank(),
       panel.border = element_blank(),
       panel.background = element_blank(),
-      axis.ticks.x = element_blank(),
-      axis.ticks.y = element_blank(),
-      axis.text.x = element_blank(),
-      axis.text.y=element_blank(),
+      axis.ticks = element_blank(),
+      axis.text = element_blank(),
+      axis.title = element_blank(),
       legend.position = "none")
 
 barplot
 
-##### Phylotenetic tree
 
-# create labels
-d <- data.frame(label = tree_ultra$tip.label, 
-                newlabel = label_pad(tree_ultra$tip.label),
-                newlabel2 = label_pad(tree_ultra$tip.label, pad = " "))
+#### Density plot for TIPS
 
-# plot with new labels
-tree <- ggtree(tree_ultra) %<+% d +  xlim(NA,1.2) +
-  geom_tiplab(aes(label=newlabel))   
-
-tree
-
-
-# reorder the labels of the database to match tip labels
-aral$Genus <- factor(aral$Genus, levels = get_taxa_name(tree))
-
-##### Density plot
+# select colors
 # standardize meanPC1 values to rage between 1 and 100, extremes = limits of the PCA
-color01 <- 1000* round(rescale(c(-6,unique(summary_aral$meanPC1),4)), digits = 2)
+color01 <- 1000* round(rescale(c(-6,summary_aral$meanPC1,4)), digits = 2)
 
 # select color proportional to value using the standardized values
-color_tip <- color[color01[c(-1,-25)]]
+color_tip <- color[color01[c(-1,-length(color01))]]
 
+# plot 
 density_plot_tips <- ggplot() +
   # horizontal boxplots & density plots
   geom_density(data = aral, aes(x= PC1, fill = Genus)) +
-  scale_fill_manual(values =  color_tip) +   
+  scale_fill_manual(values =  color_tip) +
+  # uncomment to show range of values as a bar in the lower part of the density plot
   # geom_linerangeh(data = anc_clim,   aes(y = -0.3, xmin = minPC1,
   #                xmax = maxPC1), colour = "lightgrey", size = 2) +
   geom_linerangeh(data = summary_aral,   aes(y = -0.3, xmin = meanPC1-0.05,
@@ -188,12 +211,13 @@ density_plot_tips <- ggplot() +
   xmax = medianPC1+0.05), colour = "orange", size = 2) +
   geom_vline(xintercept = limits, 
              linetype = "dashed") +
-  scale_y_continuous(breaks = c(0, 1), position = "right") +
+  scale_y_continuous(breaks = c(0, 1)) +
   xlim(c(-6, 4)) + 
   ylab("") +
   xlab("First axis of the PCA") +
   facet_grid(Genus ~ ., switch = "both") +
   theme_bw() +
+  # uncomment to show species names in density plot
   # theme(legend.position = "none",
   #       strip.background = element_rect(fill = NA),
   #       strip.text.y.left = element_text(angle=360)) +
@@ -201,26 +225,67 @@ density_plot_tips <- ggplot() +
   theme(legend.position = "none",
     strip.background = element_blank(),
     strip.text.y = element_blank()
-  ) 
-  # theme(plot.margin = unit(c(0, 0, 0, 0), "cm"))
+  )
 
 density_plot_tips
 
 # ggsave(paste0(path.to.results, "Climate_TIPS_newramp.svg"), width = 8, height = 10) 
 
 
-# combine the plots 
-library(cowplot)
+# PC mean value by node
+anc_clim_prob <- anc_clim_prob %>%
+  group_by(node) %>%
+  mutate(mean_PC=mean(value))
 
-plot_grid(tree, density_plot, align = "h", axis = "b")
+# standardize meanPC1 values to rage between 1 and 100, extremes = limits of the PCA
+color01 <- 1000* round(rescale(c(-6,unique(anc_clim_prob$mean_PC),4)), digits = 2)
+
+# select color proportional to value using the standardized values
+color_anc <- color[color01]
+
+density_plot_anc <- ggplot() +
+  # horizontal boxplots & density plots
+  geom_density(data = anc_clim_prob, aes(x= value, fill = node)) +
+  scale_fill_manual(values = color_anc) +
+  # results of the other reconstruction methods
+  # geom_linerangeh(data = anc_clim,   aes(y = -0.3, xmin = minPC1,
+  #                 xmax = maxPC1), colour = "lightgrey", size = 2) +
+  geom_linerangeh(data = anc_clim,   aes(y = -0.3, xmin = medianPC1-0.05,
+                                         xmax = medianPC1+0.05), colour = "red", size = 2) +
+  geom_linerangeh(data = anc_clim,   aes(y = -0.3, xmin = meanPC1-0.05,
+                                         xmax = meanPC1+0.05), colour = "orange", size = 2) +
+  # horizontal lines with limits between regions
+  geom_vline(xintercept = limits, linetype = "dashed") +
+  scale_y_continuous(breaks = c(0, 1)) +
+  xlim(c(-6, 4)) + # same range as in TIPS FIGURE
+  ylab("") +
+  xlab("First axis of the PCA") +
+  facet_grid(node ~ .) +
+  theme_bw() +
+  theme(legend.position = "none",
+        strip.background = element_rect(fill = NA),
+        strip.text.y = element_text(angle=360))
+
+density_plot_anc
+
+# combine the plots 
+plot_grid(barplot, density_plot_anc, ncol = 1, align = "v", axis = "l",
+          rel_heights = c(0.3,1))
+
+plot1 <- plot_grid(density_plot_anc, tree, density_plot_tips, 
+                   align = "h", 
+                   axis = "b", 
+                   nrow = 1,
+                   rel_widths = c(1,1.5,1))
+
+plot1
+
+# ggsave(paste0(path.to.results, "climate_TIP_ANC.svg"), width = 12, height = 10) 
 
 
 # generate a plot with the axis of the two subplots aligned
-barplot <- barplot + aplot::xlim2(density_plot)
-
-pp <- list(barplot, density_plot)
-
-plot_grid(plotlist=pp, ncol=1, align='v', axis = "l",rel_heights = c(1, 18))
+barplot + density_plot_tips + 
+  plot_layout(ncol = 1, heights = c(1,40))
 
 # ggsave(paste0(path.to.results, "Climate_TIPS_withbar.svg"), width = 8, height = 12) 
 
