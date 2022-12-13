@@ -6,7 +6,6 @@
 #               LIBRARIES          #####
 ########################################'
 
-# library(wesanderson)
 library(dplyr)
 library(ggplot2)
 library(ggstance)
@@ -14,6 +13,7 @@ library(ggtree)
 library(cowplot)
 library(scales)
 library(tidyr)
+library(patchwork)
 
 ########################################'
 #               PATHS             #####
@@ -43,7 +43,7 @@ aral <- aral[!(aral$Genus =="Crepinella"), ]
 aral$Genus<-as.factor(aral$Genus)
 
 # save date for version control
-date <- "2022_07_11"
+date <- "2022_12_13"
 
 
 ########################################################'
@@ -65,13 +65,16 @@ aral$Genus <- factor(aral$Genus, levels = tree_ultra$tip.label)
 aral <- aral[!is.na(aral$Genus),]
 
 # load internal nodes probabilistic climate data
-anc_clim <- read.csv(paste0(path.to.results, "ancestors_climate_nucleo", date, ".csv"))
-anc_clim_prob <- read.csv(paste0(path.to.results, "ancestors_climate_prob_nucleo", date, ".csv"))
+anc_clim <- read.csv(paste0(path.to.results, "ancestors_climate_nucleo", "2022_07_11", ".csv"))
+anc_clim_prob <- read.csv(paste0(path.to.results, "ancestors_climate_prob_nucleo", "2022_07_11", ".csv"))
 
 # change name of node in anc_clim to match name in anc_clim_prob
 colnames(anc_clim_prob) <- as.character(anc_clim$node)
 # from short to long format
 anc_clim_prob <- tidyr::gather(anc_clim_prob, node, value, factor_key=TRUE)
+
+# names of the nodes with good support, NA when no support
+nodename <- c(1:30, NA, 32:37)
 
 #############"
 # run plasto 
@@ -88,29 +91,36 @@ aral$Genus <- factor(aral$Genus, levels = tree_ultra$tip.label)
 aral <- aral[!is.na(aral$Genus),]
 
 # load internal nodes probabilistic climate data
-anc_clim <- read.csv(paste0(path.to.results, "ancestors_climate_nucleo", date, ".csv"))
-anc_clim_prob <- read.csv(paste0(path.to.results, "ancestors_climate_prob_nucleo", date, ".csv"))
+anc_clim <- read.csv(paste0(path.to.results, "ancestors_climate_nucleo", "2022_07_11", ".csv"))
+anc_clim_prob <- read.csv(paste0(path.to.results, "ancestors_climate_prob_nucleo", "2022_07_11", ".csv"))
 
 # change name of node in anc_clim to match name in anc_clim_prob
 colnames(anc_clim_prob) <- as.character(anc_clim$node)
 # from short to long format
 anc_clim_prob <- tidyr::gather(anc_clim_prob, node, value, factor_key=TRUE)
 
-
+# names of the nodes with good support, NA when no support
+nodename <- c(1:20, NA, 22:24, NA, 26:37)
 
 ########################################'
 #               CREATE PLOTS         #####
 ########################################'
 
-
 ##### Phylotenetic tree
 
-# generate labels for tips
-d <- data.frame(label = tree_ultra$tip.label)
+# generate labels for tips.
+dd <- data.frame(label = c(tree_ultra$tip.label, rep(NA, 18)), 
+                 node2 = nodename)
 
-tree <- ggtree(tree_ultra) %<+% d +  xlim(NA,1.2) +
-  geom_text2(aes(subset=!isTip, label=node), hjust=-.3) + geom_tiplab(aes(label = label))
+tree <- ggtree(tree_ultra) %<+% dd + xlim(NA,1.2) 
 
+# For some reason the node labels are not copied correctly
+# correct the labels
+tree$data$node2 <- nodename
+
+tree <- tree +  geom_text2(aes(subset = !isTip, label=node2), hjust=-.3, size = 4) + 
+  geom_tiplab(aes(label = label), size = 4, fontface = "italic") +
+  theme(plot.margin = unit(c(.1,.1,.1,.1), "pt"))
 
 tree
 
@@ -162,8 +172,7 @@ colsubt_trop <- colorRampPalette(c("#ffb118", "#ffa91d", "#ffa222", "#fe9a26",
                                    "#fc932a", "#fc932a", "#fc8a21", "#fd8018",
                                    "#fd760f", "#fd6b06"))(dlimits[4])
 coltrop <- colorRampPalette(c("#fe5f00", "#fe5100", "#fe4100", "#fe2d00",
-                              "#fe0000", "#fe0000", "#ea0000", "#d60000",
-                              "#c30000", "#b00000"))(dlimits[5])
+                              "#fe0000", "#fe0000"))(dlimits[5])
 
 # paste together de colors of all the ramps
 color <- c(coltemp, coltemp_subt,colsubt,colsubt_trop,coltrop)
@@ -183,7 +192,8 @@ barplot <- ggplot(df,aes(x= x, y = y)) +
       axis.ticks = element_blank(),
       axis.text = element_blank(),
       axis.title = element_blank(),
-      legend.position = "none")
+      legend.position = "none") +
+  theme(plot.margin = unit(c(.1,.1,.1,.1), "pt"))
 
 barplot
 
@@ -224,7 +234,8 @@ density_plot_tips <- ggplot() +
   # theme(strip.text = element_text(face = "italic")) +
   theme(legend.position = "none",
     strip.background = element_blank(),
-    strip.text.y = element_blank()
+    strip.text.y = element_blank() ,
+    plot.margin = unit(c(.1,.1,.1,.1), "pt")
   )
 
 density_plot_tips
@@ -264,30 +275,19 @@ density_plot_anc <- ggplot() +
   theme_bw() +
   theme(legend.position = "none",
         strip.background = element_rect(fill = NA),
-        strip.text.y = element_text(angle=360))
+        strip.text.y = element_text(angle=360),
+        plot.margin = unit(c(.1,.5,.1,.1), "pt"))
 
 density_plot_anc
 
-# combine the plots 
-plot_grid(barplot, density_plot_anc, ncol = 1, align = "v", axis = "l",
-          rel_heights = c(0.3,1))
-
-plot1 <- plot_grid(density_plot_anc, tree, density_plot_tips, 
-                   align = "h", 
-                   axis = "b", 
-                   nrow = 1,
-                   rel_widths = c(1,1.5,1))
-
-plot1
-
-# ggsave(paste0(path.to.results, "climate_TIP_ANC.svg"), width = 12, height = 10) 
-
-
 # generate a plot with the axis of the two subplots aligned
-barplot + density_plot_tips + 
-  plot_layout(ncol = 1, heights = c(1,40))
+barplot + plot_spacer() + barplot +  density_plot_anc + tree + density_plot_tips +
+  plot_layout(ncol = 3,  byrow = T,
+              heights = c(1,40),
+              widths = c(1, 1.5,1))
 
-# ggsave(paste0(path.to.results, "Climate_TIPS_withbar.svg"), width = 8, height = 12) 
+# ggsave(paste0(path.to.results, "Climate_tree_composite_", run, "_",date,".png"), width = 30, height = 18) 
+
 
 # graphs one by one
 n <- length(unique(aral$Genus))
